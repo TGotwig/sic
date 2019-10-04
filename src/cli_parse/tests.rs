@@ -17,32 +17,33 @@ fn load_test_files() -> Vec<TestFile> {
         .filter_map(|path| {
             if let Some(ext) = path.as_ref().unwrap().path().extension() {
                 if ext == "sic" {
-                    // NOTE: We don't check for existence of the image file!!
-                    let name = path.as_ref().unwrap().path().with_extension("jpg");
-
                     let cases = path.as_ref().unwrap().path();
-                    let lines = std::fs::read_to_string(cases).map(|lines| {
-                        lines
-                            .lines()
-                            .filter_map(|line| {
-                                if line.starts_with("#") {
-                                    None
-                                } else {
-                                    Some(String::from(line))
-                                }
-                            })
-                            .collect::<Vec<String>>()
-                    });
-
-                    return Some(TestFile {
-                        image_path: name,
-                        cases: lines.unwrap(),
-                    });
+                    return Some(load_test_file(&cases))
                 }
             }
             None
         })
         .collect::<Vec<_>>()
+}
+
+fn load_test_file(path: &Path) -> TestFile {
+    let lines = std::fs::read_to_string(path).map(|lines| {
+        lines
+            .lines()
+            .filter_map(|line| {
+                if line.starts_with("#") {
+                    None
+                } else {
+                    Some(String::from(line))
+                }
+            })
+            .collect::<Vec<String>>()
+    });
+
+    return TestFile {
+        image_path: path.with_extension("jpg"),
+        cases: lines.unwrap(),
+    };
 }
 
 fn run_test(test_file: &TestFile) {
@@ -55,7 +56,7 @@ fn run_test(test_file: &TestFile) {
 
         let out = prototype(input).unwrap();
 
-        println!("out: {:?}", out);
+        println!("optree: {:?}\n", out);
 
         assert!(out.len() > 0);
     }
@@ -76,4 +77,12 @@ fn all() {
         println!("\n{}\n* test#: {}, name: {:?}\n", DIVIDER, i, name[0]);
         run_test(test);
     }
+}
+
+#[test]
+fn multi_arg() {
+    let path = &[env!("CARGO_MANIFEST_DIR"), "/resources/tests-parser/arg_modifiers.sic"].concat();
+    let path = Path::new(path);
+    let test_file = load_test_file(path);
+    run_test(&test_file);
 }

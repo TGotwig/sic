@@ -1,4 +1,4 @@
-use crate::cli_parse::numbers::F32;
+use crate::cli_parse::core::numbers::F32;
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(Eq, PartialEq))]
@@ -7,6 +7,9 @@ pub enum ParsePerTypeError {
     ParseIntError,
     ParseUIntError,
     ParseFloatError,
+    InvalidModifierSyntax,
+    InvalidOperationForModifier,
+    ModifierArgumentExpected,
 }
 
 /// Based on sic_parser::value_parser

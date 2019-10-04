@@ -1,0 +1,1 @@
+-i in.png -o out.png --rotate180 --flip-horizontal --set resize sampling-filter nearest --resize 75 80 --hue-rotate 75

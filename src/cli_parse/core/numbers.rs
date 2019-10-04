@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub type I32 = i32;
 pub type U32 = u32;
@@ -35,5 +36,31 @@ impl FromStr for F32 {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         s.parse()
+    }
+}
+
+impl Default for F32 {
+    fn default() -> Self {
+        Self(f32::default())
+    }
+}
+
+trait Inc {
+    fn increment(&self) -> usize;
+}
+
+const MONOTONIC: Ordering = Ordering::Relaxed;
+
+impl Inc for AtomicUsize {
+    fn increment(&self) -> usize {
+        let now = self.load(MONOTONIC);
+
+        if now == std::usize::MAX {
+            panic!("Counter was exhausted.")
+        }
+
+        let next = now + 1;
+        self.store(next, MONOTONIC);
+        next
     }
 }

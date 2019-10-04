@@ -71,11 +71,15 @@
 
 use std::fmt::Debug;
 
-use crate::cli_parse::numbers::{F32, I32, U32};
 use crate::cli_parse::parse_to::{ParseFromIter, ParsePerTypeError};
 use peekmore::{PeekMore, PeekMoreIterator};
+use std::cell::Cell;
+use std::collections::HashMap;
+use crate::cli_parse::core::op::Op;
+use std::sync::atomic::AtomicUsize;
+use crate::cli_parse::core::modifier::Modifier;
 
-pub mod numbers;
+pub mod core;
 pub mod parse_to;
 
 // todo:
@@ -86,7 +90,7 @@ pub mod parse_to;
 pub enum Core {
     Operation(Op),
     // set [operation] [modifier]
-    SetModifier(Op, Modifier),
+    SetModifier(usize, Modifier),
     Skip,
 }
 
@@ -94,154 +98,10 @@ pub enum Core {
 #[derive(Debug)]
 #[cfg_attr(test, derive(Eq, PartialEq))]
 pub enum ParserError {
-    Unexpected,
+    Unexpected(String),
 
     // fixme: temporary type for convenience
     PPTE(ParsePerTypeError),
-}
-
-#[derive(Debug)]
-#[cfg_attr(test, derive(Eq, PartialEq))]
-pub enum Op {
-    Blur(F32),
-    Brighten(I32),
-    Contrast(F32),
-    Crop((U32, U32, U32, U32)),
-    Filter3x3([F32; 9]),
-    FlipH,
-    FlipV,
-    GrayScale,
-    HueRotate(I32),
-    Invert,
-    Resize((U32, U32)),
-    Rotate90,
-    Rotate180,
-    Rotate270,
-    Unsharpen((F32, I32)),
-}
-
-impl Op {
-    const SELECTION: &'static [&'static str] = &[
-        "blur",
-        "brighten",
-        "contrast",
-        "crop",
-        "filter3x3",
-        "flip-horizontal",
-        "flip-vertical",
-        "grayscale",
-        "hue-rotate",
-        "invert",
-        "resize",
-        "rotate90",
-        "rotate180",
-        "rotate180",
-        "rotate270",
-        "unsharpen",
-    ];
-
-    pub fn is_some(input: &str) -> bool {
-        Op::SELECTION.contains(&input)
-    }
-
-    // fixme: re-use sic_parser::value_parser?
-    pub fn from_str<I: Iterator>(
-        iter: &mut PeekMoreIterator<I>,
-        input: &str,
-    ) -> Option<Result<Self, ParserError>>
-    where
-        I::Item: AsRef<str> + std::fmt::Debug,
-    {
-        match input {
-            "blur" => {
-                let result: Result<Self, ParserError> = ParseFromIter::parse(iter)
-                    .map_err(|err| ParserError::PPTE(err))
-                    .map(|arg: F32| Op::Blur(arg));
-
-                Some(result)
-            }
-            "brighten" => {
-                let result: Result<Self, ParserError> = ParseFromIter::parse(iter)
-                    .map_err(|err| ParserError::PPTE(err))
-                    .map(|arg: i32| Op::Brighten(arg));
-
-                Some(result)
-            }
-            "contrast" => {
-                let result: Result<Self, ParserError> = ParseFromIter::parse(iter)
-                    .map_err(|err| ParserError::PPTE(err))
-                    .map(|arg: F32| Op::Contrast(arg));
-
-                Some(result)
-            }
-            "crop" => {
-                let result: Result<Self, ParserError> = ParseFromIter::parse(iter)
-                    .map_err(|err| ParserError::PPTE(err))
-                    .map(|arg: (u32, u32, u32, u32)| Op::Crop(arg));
-
-                Some(result)
-            }
-            "filter3x3" => {
-                let result: Result<Self, ParserError> = ParseFromIter::parse(iter)
-                    .map_err(|err| ParserError::PPTE(err))
-                    .map(|arg: [F32; 9]| Op::Filter3x3(arg));
-
-                Some(result)
-            }
-            "flip-horizontal" => Some(Ok(Op::FlipH)),
-            "flip-vertical" => Some(Ok(Op::FlipV)),
-            "grayscale" => Some(Ok(Op::GrayScale)),
-            "hue-rotate" => {
-                let result: Result<Self, ParserError> = ParseFromIter::parse(iter)
-                    .map_err(|err| ParserError::PPTE(err))
-                    .map(|arg: i32| Op::HueRotate(arg));
-
-                Some(result)
-            }
-            "invert" => Some(Ok(Op::Invert)),
-            "resize" => {
-                let result: Result<Self, ParserError> = ParseFromIter::parse(iter)
-                    .map_err(|err| ParserError::PPTE(err))
-                    .map(|arg: (u32, u32)| Op::Resize(arg));
-
-                Some(result)
-            }
-            "rotate90" => Some(Ok(Op::Rotate90)),
-            "rotate180" => Some(Ok(Op::Rotate180)),
-            "rotate270" => Some(Ok(Op::Rotate270)),
-            "unsharpen" => {
-                let result: Result<Self, ParserError> = ParseFromIter::parse(iter)
-                    .map_err(|err| ParserError::PPTE(err))
-                    .map(|arg: (F32, i32)| Op::Unsharpen(arg));
-
-                Some(result)
-            }
-            _ => None,
-        }
-    }
-}
-
-#[derive(Debug)]
-#[cfg_attr(test, derive(Eq, PartialEq))]
-pub enum Modifier {
-    PreserveAspectRatio,
-    SamplingFilter,
-}
-
-impl Modifier {
-    pub fn from_str<I: Iterator>(
-        _iter: &mut PeekMoreIterator<I>,
-        input: &str,
-    ) -> Option<Result<Self, ParserError>>
-    where
-        I::Item: AsRef<str>,
-    {
-        match input {
-            "preserve-aspect-ratio" => Some(Ok(Self::PreserveAspectRatio)),
-            "sampling-filter" => Some(Ok(Self::SamplingFilter)),
-            _ => None,
-        }
-    }
 }
 
 pub trait StopMark {
@@ -255,7 +115,7 @@ impl StopMark for String {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum ParsingMode {
     Arg,
     Script,
@@ -266,37 +126,49 @@ pub enum ParsingMode {
 pub struct Parser<V: StopMark + AsRef<str> + Debug, T: Iterator<Item = V>> {
     source: PeekMoreIterator<T>,
     stop_mark: V,
-    mode: ParsingMode,
+    // After the first element for which a decision has to be made whether the input is Arg or Script mode,
+    // we will set the parsing mode from ambiguous to the respective mode
+    mode: Cell<ParsingMode>,
+
+    modifier_counter: AtomicUsize,
+    modifier_environment: HashMap<usize, Modifier>,
 }
+
+// TODO:
+// 1) ensure Arg mode works
+//      - we remove features we currently didn't need; see git history
+// 2) ensure Script mode works / make compatible with Script mode
+// 3) work towards ambiguous mode
 
 impl<V: StopMark + AsRef<str> + Debug, T: Iterator<Item = V>> Parser<V, T> {
     pub fn new(input: T) -> Self {
         Parser {
             source: input.peekmore(),
             stop_mark: V::mark(),
-            mode: ParsingMode::Ambiguous,
+            mode: Cell::new(ParsingMode::Arg),
+
+            modifier_counter: AtomicUsize::new(0),
+            modifier_environment: HashMap::new(),
         }
     }
 
-    pub fn peek_check_for_cli_arg_prefixes(&mut self) -> bool {
-        fn starts_with_dashes<V: AsRef<str>>(input: V) -> bool {
-            let arg = input.as_ref();
-            arg.starts_with("--") && arg.len() > 2
-        }
-
-        let ok = self.source.peek().map(starts_with_dashes);
+    // does the token start with `--`?
+    pub fn has_arg_prefix(&mut self) -> bool {
+        fn f<V: AsRef<str>>(input: V) -> bool { is_long_arg(input.as_ref()) }
+        let ok = self.source.peek().map(f);
         ok.unwrap_or(false)
     }
 
-    // if the source we are parsing includes potentially cli args
-    // we ignore the ones we don't know
-    pub fn is_non_image_op_cli_arguments(&self, arg: &str) -> bool {
-        self.mode != ParsingMode::Script
-            && ((arg.starts_with("--") && arg.len() > 2)
-                || (arg.starts_with("-") && arg.len() == 2))
-    }
 
-    pub fn skip_non_image_op_cli_arguments(&self) -> Option<Result<Core, ParserError>> {
+    pub fn skip_non_image_op_cli_arguments(&mut self) -> Option<Result<Core, ParserError>> {
+        while let Some(token) = self.source.peek() {
+            if is_cli_arg(token) {
+                break;
+            } else {
+                // skip
+                let _ = self.source.next();
+            }
+        }
         Some(Ok(Core::Skip))
     }
 }
@@ -305,24 +177,25 @@ impl<V: StopMark + AsRef<str> + Debug, T: Iterator<Item = V>> Iterator for Parse
     type Item = Result<Core, ParserError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let prefixed = self.peek_check_for_cli_arg_prefixes();
+        let prefixed = self.has_arg_prefix();
         dbg!(prefixed);
 
         let next_consumed = self.source.next();
-        let next_token = next_consumed.as_ref().unwrap_or(&self.stop_mark);
+        let token = next_consumed.as_ref().unwrap_or(&self.stop_mark);
         // unless parsing mode is Script, if the current token is prefixed,
         // we limit the slice as to not include the `--`.
-        let next_token = if self.mode != ParsingMode::Script && prefixed {
-            let (_, hi) = next_token.as_ref().split_at(2);
-            hi
+        let token = if prefixed {
+            let (_, id) = token.as_ref().split_at(2);
+            id
         } else {
-            next_token.as_ref()
+            token.as_ref()
         };
 
-        eprintln!("token(in): {}", next_token);
+        eprintln!("token(in): {}", token);
 
-        match next_token {
+        match token {
             // The stop mark tells us that the iterator is finished.
+            // Thus, nothing beyond this matching should return None!
             v if v == self.stop_mark.as_ref() => None,
 
             // One of the image operations.
@@ -330,15 +203,18 @@ impl<V: StopMark + AsRef<str> + Debug, T: Iterator<Item = V>> Iterator for Parse
                 let which = Op::from_str(&mut self.source, op);
                 which.map(|v| v.map(|ok| Core::Operation(ok)))
             }
+            modifier if Modifier::modifier_start(modifier) => {
+                Modifier::modifier_for(&mut self.source)
+            }
 
             // An operation from the cli which is not an image operation.
             // FIXME: we'll also have to skip the arguments of said potential non image operation
             //      argument.
             //      - peek until next peek starts with '--' again; <= skip
-            arg if self.is_non_image_op_cli_arguments(arg) => {
+            arg if is_cli_arg(arg) => {
                 self.skip_non_image_op_cli_arguments()
             }
-            _ => Some(Err(ParserError::Unexpected)),
+            elsy => Some(Err(ParserError::Unexpected(elsy.to_string()))),
         }
     }
 }
@@ -353,12 +229,27 @@ pub fn prototype<T: Iterator<Item = String>>(args: T) -> Result<Vec<Core>, Parse
         .collect::<Result<Vec<_>, ParserError>>()
 }
 
+// if the source we are parsing includes potentially cli args
+// we ignore the ones we don't know
+fn is_cli_arg<P: AsRef<str>>(arg: P) -> bool {
+    is_long_arg(arg.as_ref()) || is_short_arg(arg.as_ref())
+}
+
+fn is_long_arg(arg: &str) -> bool {
+    arg.starts_with("--") && arg.len() > 2
+}
+
+fn is_short_arg(arg: &str) -> bool {
+    arg.starts_with("-") && arg.len() == 2
+}
+
 #[cfg(test)]
 mod tests;
 
 #[cfg(test)]
 mod tests_parser {
     use super::*;
+    use super::core::numbers::F32;
 
     macro_rules! combi_test {
         ($mod_name:ident, $expected:expr, $($input:expr),*) => {
@@ -559,6 +450,7 @@ mod tests_parser {
 
     mod multi {
         use super::*;
+
 
         combi_test!(
             multi_1,
