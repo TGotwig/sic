@@ -43,7 +43,7 @@ fn load_test_file(path: &Path) -> TestFile {
         lines
             .lines()
             .filter_map(|line| {
-                if line.starts_with("#") {
+                if line.starts_with("#") || line.is_empty() {
                     None
                 } else if line.starts_with("@") {
                     Some(Case {
@@ -82,9 +82,11 @@ fn run_test(test_file: &TestFile) {
                 assert!(out.is_ok());
                 let out = out.unwrap();
                 println!("optree: {:?}\n", out);
-                assert!(out.len() > 0);
             }
-            Outcome::Failure => assert!(out.is_err()),
+            Outcome::Failure => {
+                assert!(out.is_err());
+                println!();
+            }
         }
     }
 }

@@ -1,3 +1,7 @@
 --set resize preserve-aspect-ratio --resize 100 100
 --set resize sampling-filter triangle --resize 100 100
 @--set resize sampling-filter triangle --resize 100 100 --no
+
+# FP
+@--set resize sampling-filter triangle --resize 100 100.0
+@--set resize sampling-filter triangle --resize 100.0 100
