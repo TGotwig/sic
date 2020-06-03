@@ -49,6 +49,11 @@ impl OperationId {
         self.as_static()
     }
 
+    pub const fn variants() -> &'static [&'static str] {
+        use strum::VariantNames;
+        Self::VARIANTS
+    }
+
     pub fn try_from_name(input: &str) -> TResult<Self> {
         OperationId::from_str(input)
             .map_err(|_err| SicCliOpsError::InternalError(InternalErrorSource::NoMatchingOperator))

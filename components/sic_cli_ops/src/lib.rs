@@ -10,7 +10,6 @@ extern crate parameterized;
 use crate::errors::SicCliOpsError;
 use crate::operations::OperationId;
 use sic_image_engine::engine::Instr;
-use strum::VariantNames;
 
 pub mod errors;
 pub mod operations;
@@ -36,12 +35,12 @@ pub fn create_image_ops<I: IntoIterator<Item = String>>(iter: I) -> TResult<Vec<
 
     while let Some(ref program_argument) = iter.next() {
         if program_argument.starts_with("--")
-            && OperationId::VARIANTS.contains(&&program_argument[2..])
+            && OperationId::variants().contains(&&program_argument[2..])
         {
             let operation = OperationId::try_from_name(&program_argument[2..])?;
             let inputs = take_n(&mut iter, operation)?;
-            let inputs = inputs.iter().map(|v| v.as_str()).collect::<Vec<&str>>();
-            ast.push(operation.create_instruction(inputs)?);
+
+            ast.push(operation.create_instruction(inputs.iter().map(|v| v.as_str()))?);
         }
         // else: skip
     }
