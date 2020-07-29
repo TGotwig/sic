@@ -20,7 +20,12 @@ rusttype = { version = "0.9.2", optional = true }
 
 [dev-dependencies]
 sic_testing = { version = "0.12.0", path = "../sic_testing" }
+criterion = "0.3.3"
 
 [features]
 imageproc-ops = ["imageproc", "rusttype"]
 output-test-images = []
+
+[[bench]]
+name = "ops"
+harness = false
