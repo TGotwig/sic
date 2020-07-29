@@ -1,0 +1,55 @@
+- workmap:
+    - author: github.com/foresterre
+    - license-file: "../LICENSE"
+    - items:
+        - "1x1_a.png"
+        - "1x1_b.png"
+        - "1x1_w.png"
+        - "2x2_baab.png"
+        - "2x2_bbbb.png"
+        - "2x2_bwwb.bmp"
+        - "2x2_wbaw.png"
+        - "2x2_wwaw.png"
+        - "2x3_rrgrbb.bmp"
+        - "2x3_wrabaa.png"
+        - "2x3_yrgyyb.bmp"
+        - "3x2_rgbrrb.bmp"
+        - "3x2_wbaaba.png"
+        - "3x2_ygyryb.bmp"
+        - "3x3_babababab.png"
+        - "apng_sample.png"
+        - "blackwhite_2x2.bmp"
+        - "bwlines.png"
+        - "loop.gif"
+        - "noloop.gif"
+        - "palette_4x4.png"
+        - "rainbow_8x6.bmp"
+    - globitems:
+        - "help-images/*"
+
+- workmap:
+    - author: Eberhard Grossgasteiger
+    - distributor: Unsplash
+    - license: Unsplash License
+    - license-url: https://unsplash.com/license
+    - comments: cropped by the sic project author for this project
+    - items:
+        - "unsplash_763569_cropped.jpg"
+
+- workmap:
+    - author: Isabella Jusková
+    - distributor: Unsplash
+    - distributor-source: https://unsplash.com/photos/9aNltHjuOc0
+    - license: Unsplash License
+    - license-url: https://unsplash.com/license
+    - items:
+        - "bench/horses.jpg"
+
+- workmap:
+    - author: Joes Valentine
+    - distributor: Unsplash
+    - distributor-source: https://unsplash.com/photos/NId0xh7fhqc
+    - license: Unsplash License
+    - license-url: https://unsplash.com/license
+    - items:
+        - "bench/palm-leaf.jpg"
