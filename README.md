@@ -112,22 +112,14 @@ If we use the _cli operations_ method the previously shown example becomes: <br>
 |hue rotate         | `hue-rotate <int>`                        | 0.7.0 	  | Rotate's the hue, argument is in degrees. Rotates `<int>%360` degrees. |
 |invert             | `invert`                                  | 0.7.0 	  | Invert the colours of an image. |
 |resize             | `resize <uint> <uint>`                    | 0.5.0 	  | Resize the image to x by y pixels. Can both up- and downscale. Uses a `lanczos3` sampling filter unless overridden. Prior to sic v0.11, the default sampling filter was `gaussian`. |
-| >                 | `set preserve-aspect-ratio <bool>`        | 0.9.0       | Enables preservation of the aspect ratio when resizing. |
-| >                 | `set sampling-filter <value>`             | 0.9.0       | When resizing use the `<value>` sampling filter. Choices are `catmullrom`, `gaussian`,`lanczos3`,`nearest`,`triangle`. |
+| >                 | `preserve-aspect-ratio <bool>`        | 0.9.0       | Enables preservation of the aspect ratio when resizing. |
+| >                 | `sampling-filter <value>`             | 0.9.0       | When resizing use the `<value>` sampling filter. Choices are `catmullrom`, `gaussian`,`lanczos3`,`nearest`,`triangle`. |
 |rotate90           | `rotate90`                                | 0.7.0 	  | Rotate an image 90 degrees. |
 |rotate180          | `rotate180`                               | 0.7.0 	  | Rotate an image 180 degrees. |
 |rotate270          | `rotate270`                               | 0.7.0 	  | Rotate an image 270 degrees. |
 |unsharpen          | `unsharpen <fp> <int>`                    | 0.7.0 	  | Applies an unsharpen mask to the image. The first parameter defines how much the image should be blurred and the second parameter defines a threshold. If the difference between the original and blurred image is at least the threshold, they will be subtracted from each other. Can be used to sharpen an image. |
 
 `* The exact syntax applies to the --apply-operations method, but can also be used as a reference for the image operations as cli arguments method.`
-
-
-For some operations, their behaviour can be adapted by setting an operation modifier. These modifiers can be overwritten and they can also be reset (to their default behaviour).
-
-|environment operation|syntax|available (from version)|description|
-|---|---|---|---|
-|set environment option   | `set <option> [<args 0..n>]` | 0.9.0 | Enables the use of a modifier for an operation. Any operation which uses the value of the modifier will use the set modifier value instead of the default value. Can be overwritten by calling `set` again for the same operation and modifier specifier. |
-|unset environment option | `del <option>`               | 0.9.0 | Resets the modifier value. Any operation which looks at the value of this modifier will use the default value instead.|
 
 _legend_:
 

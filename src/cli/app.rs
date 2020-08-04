@@ -4,8 +4,8 @@ use crate::cli::config::{
 use anyhow::{anyhow, bail};
 use arg_names::*;
 use clap::{App, AppSettings, Arg, ArgGroup, ArgMatches};
-use sic_cli_ops::create_image_ops;
 use sic_cli_ops::operations::OperationId;
+use sic_cli_ops::{create_image_ops_cli, create_image_ops_script};
 use sic_io::load::FrameIndex;
 use std::path::Path;
 use std::str::FromStr;
@@ -451,13 +451,13 @@ pub fn build_app_config<'a>(matches: &'a ArgMatches) -> anyhow::Result<Config<'a
     // receive the amount of times --crop was defined, but rather all the separate provided values for
     // the name of the argument, we just know that for `crop` we have values 0,0,1,1.
     let program = if let Some(script) = matches.value_of(ARG_APPLY_OPERATIONS) {
-        sic_parser::parse_script(script)?
+        create_image_ops_script(script.split(';').map(str::trim))?
     } else if let Some(path) = matches.value_of(ARG_OPERATIONS_SCRIPT) {
         let contents = std::fs::read_to_string(Path::new(path))
             .map_err(|err| anyhow::anyhow!("unable to read script file: {}", err))?;
-        sic_parser::parse_script(&contents)?
+        create_image_ops_script(contents.split(';').map(str::trim))?
     } else {
-        create_image_ops(std::env::args())?
+        create_image_ops_cli(std::env::args())?
     };
 
     builder = builder.image_operations_program(program);

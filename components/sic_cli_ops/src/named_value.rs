@@ -2,8 +2,6 @@
 //! where N is the identifier of the named value, and T is a comma separated tuple of values,
 //! like so: `a,b,c`. Dangling commas are not supported. A full example look like this: `rgb(4, 255, 0)`.
 
-use super::Rule;
-use pest::iterators::Pair;
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -43,27 +41,6 @@ pub enum NamedValueError {
 }
 
 type NVResult<T> = Result<T, NamedValueError>;
-
-pub fn parse_named_value(pair: Pair<'_, Rule>) -> NVResult<NamedValue> {
-    let mut pairs = pair.into_inner();
-
-    // identifier
-    let ident = pairs
-        .next()
-        .ok_or_else(|| NamedValueError::IdentifierNotFound)?;
-
-    let ident = match ident.as_rule() {
-        Rule::ident => parse_ident(ident.as_str())?,
-        _ => return Err(NamedValueError::IdentifierNotFound),
-    };
-
-    // arguments
-    let arguments = pairs
-        .map(|pair| Value::try_from_pair(pair, ident))
-        .collect::<NVResult<Vec<_>>>()?;
-
-    NamedValue::try_from_annotated(AnnotatedArgs { ident, arguments })
-}
 
 impl FromStr for NamedValue {
     type Err = NamedValueError;
@@ -140,16 +117,6 @@ enum Value<'a> {
 }
 
 impl<'a> Value<'a> {
-    pub fn try_from_pair(pair: Pair<'a, Rule>, ident: Ident) -> NVResult<Self> {
-        match (pair.as_rule(), ident) {
-            (Rule::fp, Ident::Rgba) => Ok(Value::parse_byte(pair.as_str())?),
-            (Rule::fp, Ident::Size) => Ok(Value::parse_float(pair.as_str())?),
-            (Rule::fp, Ident::Coord) => Ok(Value::parse_nat_num(pair.as_str())?),
-            (Rule::string_unicode, _) => Ok(Value::parse_string(pair.into_inner().as_str())?),
-            _ => Err(NamedValueError::InvalidArgumentType),
-        }
-    }
-
     pub fn try_from_str(s: &'a str, ident: Ident) -> NVResult<Self> {
         match ident {
             Ident::Rgba => Ok(Value::parse_byte(s)?),

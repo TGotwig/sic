@@ -240,7 +240,6 @@ impl ParseInputsFromIter for ImageFromPath {
         Self: std::marker::Sized,
     {
         let mut iter = iterable.into_iter();
-
         let path = parse_to_path_buf(iter.next().map(Into::<Describable>::into))?;
 
         return_if_complete!(iter, ImageFromPath::new(path))
@@ -311,10 +310,51 @@ fn parse_to_path_buf(value: Option<Describable>) -> Result<PathBuf, SicParserErr
 
     value
         .ok_or_else(|| SicParserError::ValueParsingError(err_msg_no_such_element()))
+        .and_then(unquote)
         .and_then(|v: Describable| {
             PathBuf::try_from(v.0)
                 .map_err(|_| SicParserError::ValueParsingError(err_msg_invalid_path()))
         })
+}
+
+fn unquote(item: Describable) -> Result<Describable, SicParserError> {
+    let content = item.0;
+
+    // FIXME: workaround, see crate::create_image_ops_script()
+    if std::env::var("SIC_SCRIPT_WORKAROUND_UNQUOTE").is_ok()
+        && content.surrounded_by_quotation_marks()
+    {
+        // TODO: fix scripts like """, which currently would be valid and will be unquoted to ".
+        //  - works since we don't properly parse at the moment
+        //  - could be valid for the filesystem
+        //  - but is ambiguous
+        Ok(Describable(&content[1..content.len() - 1]))
+    } else {
+        Ok(item)
+    }
+}
+
+trait SurroundedByQuotations {
+    fn surrounded_by_quotation_marks(&self) -> bool;
+}
+
+impl<T: AsRef<str>> SurroundedByQuotations for T {
+    fn surrounded_by_quotation_marks(&self) -> bool {
+        let content = self.as_ref();
+        let length = content.len();
+
+        length >= 2
+            && content.chars().next().map(is_quote).is_some()
+            && content.chars().last().map(is_quote).is_some()
+    }
+}
+
+fn is_quote(c: char) -> Option<()> {
+    if c == '"' || c == '\'' {
+        Some(())
+    } else {
+        None
+    }
 }
 
 #[cfg(feature = "imageproc-ops")]
